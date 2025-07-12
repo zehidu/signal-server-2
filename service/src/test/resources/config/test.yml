@@ -535,3 +535,12 @@ externalRequestFilter:
 
 idlePrimaryDeviceReminder:
   minIdleDuration: P30D
+
+# Email service configuration for verification
+emailService:
+  smtpHost: "smtp.gmail.com"
+  smtpPort: 587
+  username: "zehi.loredo1990@gmail.com"
+  password: "bxksqvnebjvficra"
+  fromAddress: "noreply@drilun.com"
+  enabled: true

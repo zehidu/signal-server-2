@@ -62,6 +62,7 @@ import org.whispersystems.textsecuregcm.configuration.TurnConfiguration;
 import org.whispersystems.textsecuregcm.configuration.UnidentifiedDeliveryConfiguration;
 import org.whispersystems.textsecuregcm.configuration.VirtualThreadConfiguration;
 import org.whispersystems.textsecuregcm.configuration.ZkConfig;
+import org.whispersystems.textsecuregcm.configuration.EmailServiceConfiguration;
 import org.whispersystems.textsecuregcm.limits.RateLimiterConfig;
 import org.whispersystems.websocket.configuration.WebSocketConfiguration;
 
@@ -334,6 +335,11 @@ public class WhisperServerConfiguration extends Configuration {
   private IdlePrimaryDeviceReminderConfiguration idlePrimaryDeviceReminder =
       new IdlePrimaryDeviceReminderConfiguration(Duration.ofDays(30));
 
+  @Valid
+  @NotNull
+  @JsonProperty
+  private EmailServiceConfiguration emailService;
+
   public TlsKeyStoreConfiguration getTlsKeyStoreConfiguration() {
     return tlsKeyStore;
   }
@@ -551,5 +557,9 @@ public class WhisperServerConfiguration extends Configuration {
 
   public IdlePrimaryDeviceReminderConfiguration idlePrimaryDeviceReminderConfiguration() {
     return idlePrimaryDeviceReminder;
+  }
+
+  public EmailServiceConfiguration getEmailService() {
+    return emailService;
   }
 }
