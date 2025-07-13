@@ -70,8 +70,8 @@ public @interface E164 {
         return true;
       }
       
-      // Check if it's an email address
-      if (isEmailAddress(value)) {
+      // Check if it's an email address (simple check)
+      if (value.contains("@")) {
         return isValidEmail(value);
       }
       
@@ -87,54 +87,20 @@ public @interface E164 {
       return true;
     }
 
-    private boolean isEmailAddress(final String value) {
-      return value != null && value.contains("@") && value.contains(".");
-    }
-
     private boolean isValidEmail(final String email) {
-      // Basic email validation
       if (email == null || email.trim().isEmpty()) {
         return false;
       }
       
+      // Very basic email validation - just check for @ and .
       String trimmed = email.trim();
+      int atIndex = trimmed.indexOf('@');
+      int lastDotIndex = trimmed.lastIndexOf('.');
       
-      // Must contain exactly one @
-      long atCount = trimmed.chars().filter(ch -> ch == '@').count();
-      if (atCount != 1) {
-        return false;
-      }
-      
-      // Split by @
-      String[] parts = trimmed.split("@");
-      if (parts.length != 2) {
-        return false;
-      }
-      
-      String localPart = parts[0];
-      String domainPart = parts[1];
-      
-      // Local part validation
-      if (localPart.isEmpty() || localPart.length() > 64) {
-        return false;
-      }
-      
-      // Domain part validation
-      if (domainPart.isEmpty() || domainPart.length() > 255) {
-        return false;
-      }
-      
-      // Domain must contain at least one dot
-      if (!domainPart.contains(".")) {
-        return false;
-      }
-      
-      // Basic character validation
-      if (!localPart.matches("[a-zA-Z0-9._%+-]+") || !domainPart.matches("[a-zA-Z0-9.-]+")) {
-        return false;
-      }
-      
-      return true;
+      // Must have @ and . in correct positions
+      return atIndex > 0 && 
+             lastDotIndex > atIndex + 1 && 
+             lastDotIndex < trimmed.length() - 1;
     }
 
   }
