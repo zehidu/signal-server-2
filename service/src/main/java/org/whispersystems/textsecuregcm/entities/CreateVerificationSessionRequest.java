@@ -17,11 +17,11 @@ import org.whispersystems.textsecuregcm.util.E164;
 // https://github.com/FasterXML/jackson-databind/issues/1497
 public final class CreateVerificationSessionRequest {
 
-  @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "The e164-formatted phone number to be verified")
-  @E164
-  @NotBlank
-  @JsonProperty
-  private String number;
+@Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "The e164-formatted phone number or email address to be verified")
+@E164
+@NotBlank
+@JsonProperty
+private String number;
 
   @Valid
   @JsonUnwrapped
