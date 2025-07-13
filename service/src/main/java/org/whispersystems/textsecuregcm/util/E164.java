@@ -46,29 +46,6 @@ public @interface E164 {
       if (Objects.isNull(value)) {
         return true;
       }
-      if (!value.startsWith("+")) {
-        return false;
-      }
-      try {
-        Util.requireNormalizedNumber(value);
-      } catch (final ImpossiblePhoneNumberException | NonNormalizedPhoneNumberException e) {
-        return false;
-      }
-      return true;
-    }
-  }
-
-  class OptionalValidator implements ConstraintValidator<E164, Optional<String>> {
-
-    @Override
-    public boolean isValid(final Optional<String> value, final ConstraintValidatorContext context) {
-      return value.map(s -> isValidValue(s, context)).orElse(true);
-    }
-    
-    private boolean isValidValue(final String value, final ConstraintValidatorContext context) {
-      if (Objects.isNull(value)) {
-        return true;
-      }
       
       // Check if it's an email address (simple check)
       if (value.contains("@")) {
@@ -101,6 +78,14 @@ public @interface E164 {
       return atIndex > 0 && 
              lastDotIndex > atIndex + 1 && 
              lastDotIndex < trimmed.length() - 1;
+    }
+  }
+
+  class OptionalValidator implements ConstraintValidator<E164, Optional<String>> {
+
+    @Override
+    public boolean isValid(final Optional<String> value, final ConstraintValidatorContext context) {
+      return value.map(s -> isValidValue(s, context)).orElse(true);
     }
 
   }
