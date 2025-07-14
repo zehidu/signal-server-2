@@ -181,10 +181,18 @@ public class VerificationController {
         request.getUpdateVerificationSessionRequest());
 
     final Phonenumber.PhoneNumber phoneNumber;
-    try {
-      phoneNumber = Util.canonicalizePhoneNumber(PhoneNumberUtil.getInstance().parse(request.getNumber(), null));
-    } catch (final NumberParseException e) {
-      throw new ServerErrorException("could not parse already validated number", Response.Status.INTERNAL_SERVER_ERROR);
+    final boolean isEmail = request.getNumber().contains("@");
+
+    if (isEmail) {
+      // For email addresses, we don't need to parse as phone number
+      phoneNumber = null;
+    } else {
+      // Parse as phone number for non-email inputs
+      try {
+        phoneNumber = Util.canonicalizePhoneNumber(PhoneNumberUtil.getInstance().parse(request.getNumber(), null));
+      } catch (final NumberParseException e) {
+        throw new ServerErrorException("could not parse already validated number", Response.Status.INTERNAL_SERVER_ERROR);
+      }
     }
 
     final RegistrationServiceSession registrationServiceSession;
