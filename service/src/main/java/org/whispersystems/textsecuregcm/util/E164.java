@@ -22,7 +22,7 @@ import java.util.Optional;
 
 /**
  * Constraint annotation that requires annotated entity
- * to hold (or return) a string value that is a valid E164-normalized phone number.
+ * to hold (or return) a string value that is a valid E164-normalized phone number or email address.
  */
 @Target({ FIELD, PARAMETER, METHOD })
 @Retention(RUNTIME)
@@ -47,7 +47,7 @@ public @interface E164 {
         return true;
       }
       
-      // Check if it's an email address (simple check)
+      // Check if it's an email address
       if (value.contains("@")) {
         return isValidEmail(value);
       }
@@ -85,8 +85,7 @@ public @interface E164 {
 
     @Override
     public boolean isValid(final Optional<String> value, final ConstraintValidatorContext context) {
-      return value.map(s -> isValidValue(s, context)).orElse(true);
+        return value.map(s -> new Validator().isValid(s, context)).orElse(true);
     }
-
   }
-}
+} 
