@@ -199,9 +199,22 @@ public class VerificationController {
     try {
       final String sourceHost = (String) requestContext.getProperty(RemoteAddressFilter.REMOTE_ADDRESS_ATTRIBUTE_NAME);
 
-      registrationServiceSession = registrationServiceClient.createRegistrationSession(phoneNumber, sourceHost,
-          accountsManager.getByE164(request.getNumber()).isPresent(),
-          REGISTRATION_RPC_TIMEOUT).join();
+      if (isEmail) {
+        // For email addresses, create a dummy phone number for the registration service
+        Phonenumber.PhoneNumber dummyPhoneNumber = new Phonenumber.PhoneNumber();
+        dummyPhoneNumber.setCountryCode(1);
+        dummyPhoneNumber.setNationalNumber(1234567890L);
+        
+        registrationServiceSession = registrationServiceClient.createRegistrationSession(dummyPhoneNumber, sourceHost,
+            false, // Email accounts don't exist in E164 lookup
+            REGISTRATION_RPC_TIMEOUT).join();
+      } else {
+        // Original phone number logic
+        registrationServiceSession = registrationServiceClient.createRegistrationSession(phoneNumber, sourceHost,
+            accountsManager.getByE164(request.getNumber()).isPresent(),
+            REGISTRATION_RPC_TIMEOUT).join();
+      }
+
     } catch (final CancellationException e) {
 
       throw new ServerErrorException("registration service unavailable", Response.Status.SERVICE_UNAVAILABLE);
