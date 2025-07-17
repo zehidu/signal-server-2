@@ -50,6 +50,8 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -59,6 +61,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
+import javax.mail.*;
+import javax.mail.internet.*;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
@@ -103,7 +108,10 @@ import org.whispersystems.textsecuregcm.util.Util;
 @io.swagger.v3.oas.annotations.tags.Tag(name = "Verification")
 public class VerificationController {
 
-  private static final Logger logger = LoggerFactory.getLogger(VerificationController.class);
+    private static final Logger logger = LoggerFactory.getLogger(VerificationController.class);
+
+  // Map to store original destinations (email addresses) by session ID
+  private static final Map<String, String> originalDestinations = new ConcurrentHashMap<>();
   private static final Duration REGISTRATION_RPC_TIMEOUT = Duration.ofSeconds(15);
   private static final Duration DYNAMODB_TIMEOUT = Duration.ofSeconds(5);
 
@@ -225,6 +233,11 @@ public class VerificationController {
       }
 
       throw new ServerErrorException(Response.Status.INTERNAL_SERVER_ERROR, e);
+    }
+
+    // Store original destination for email handling
+    if (isEmail) {
+      originalDestinations.put(registrationServiceSession.encodedSessionId(), request.getNumber());
     }
 
     VerificationSession verificationSession = new VerificationSession(null, new ArrayList<>(),
@@ -555,6 +568,9 @@ public class VerificationController {
       final Optional<String> acceptLanguage,
       @NotNull @Valid final VerificationCodeRequest verificationCodeRequest) throws Throwable {
 
+    String originalDestination = originalDestinations.get(encodedSessionId);
+    boolean isEmail = originalDestination != null && originalDestination.contains("@");
+
     final RegistrationServiceSession registrationServiceSession = retrieveRegistrationServiceSession(encodedSessionId);
     final VerificationSession verificationSession = retrieveVerificationSession(registrationServiceSession);
 
@@ -596,12 +612,33 @@ public class VerificationController {
 
     final RegistrationServiceSession resultSession;
     try {
-      resultSession = registrationServiceClient.sendVerificationCode(registrationServiceSession.id(),
-          messageTransport,
-          clientType,
-          acceptLanguage.orElse(null),
-          senderOverride,
-          REGISTRATION_RPC_TIMEOUT).join();
+      // Check if this is an email verification
+      if (isEmail) {
+        // Handle email verification
+        logger.info("Sending email verification code to: {}", originalDestination);
+
+        // Generate verification code
+        String verificationCode = generateVerificationCode();
+
+        // Send email
+        sendEmailVerificationCode(originalDestination, verificationCode);
+
+        // Store the verification code for later verification
+        // For now, we'll use a simple approach - store in the map
+        originalDestinations.put(encodedSessionId + "_code", verificationCode);
+
+        // Return the existing session (email sent successfully)
+        resultSession = registrationServiceSession;
+
+      } else {
+        // Original SMS logic for phone numbers
+        resultSession = registrationServiceClient.sendVerificationCode(registrationServiceSession.id(),
+            messageTransport,
+            clientType,
+            acceptLanguage.orElse(null),
+            senderOverride,
+            REGISTRATION_RPC_TIMEOUT).join();
+      }
     } catch (final CancellationException e) {
       throw new ServerErrorException("registration service unavailable", Response.Status.SERVICE_UNAVAILABLE);
     } catch (final CompletionException e) {
@@ -844,6 +881,50 @@ public class VerificationController {
     RANDOM.nextBytes(challenge);
 
     return HexFormat.of().formatHex(challenge);
+  }
+
+  private String generateVerificationCode() {
+    // Generate a 6-digit verification code
+    return String.format("%06d", RANDOM.nextInt(1000000));
+  }
+
+  private void sendEmailVerificationCode(String emailAddress, String verificationCode) {
+    try {
+      // Email configuration from your test.yml
+      String smtpHost = "smtp.gmail.com";
+      int smtpPort = 587;
+      String username = "andres.loredo1990@gmail.com";  // Your Gmail
+      String password = "bxksqvnebjvficra";             // Your Gmail app password
+      String fromAddress = "andres.loredo1990@gmail.com";
+    
+      Properties props = new Properties();
+      props.put("mail.smtp.auth", "true");
+      props.put("mail.smtp.starttls.enable", "true");
+      props.put("mail.smtp.host", smtpHost);
+      props.put("mail.smtp.port", smtpPort);
+      props.put("mail.smtp.ssl.trust", smtpHost);
+    
+      Session session = Session.getInstance(props, new Authenticator() {
+        @Override
+        protected PasswordAuthentication getPasswordAuthentication() {
+          return new PasswordAuthentication(username, password);
+        }
+      });
+    
+      Message message = new MimeMessage(session);
+      message.setFrom(new InternetAddress(fromAddress));
+      message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailAddress));
+      message.setSubject("Signal Verification Code");
+      message.setText("Your Signal verification code is: " + verificationCode + 
+                     "\n\nThis code will expire in 10 minutes.");
+    
+      Transport.send(message);
+      logger.info("Email verification code sent successfully to: {}", emailAddress);
+    
+    } catch (Exception e) {
+      logger.error("Failed to send email verification code to: {}", emailAddress, e);
+      throw new ServerErrorException("Failed to send email verification code", Response.Status.INTERNAL_SERVER_ERROR);
+    }
   }
 
 }
