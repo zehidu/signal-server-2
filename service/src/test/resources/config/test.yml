@@ -540,7 +540,7 @@ idlePrimaryDeviceReminder:
 emailService:
   smtpHost: "smtp.gmail.com"
   smtpPort: 587
-  username: "zehi.loredo1990@gmail.com"
+  username: "andres.loredo1990@gmail.com"
   password: "bxksqvnebjvficra"
-  fromAddress: "noreply@drilun.com"
+  fromAddress: "andres.loredo1990@gmail.com"
   enabled: true
