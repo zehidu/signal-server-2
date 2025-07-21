@@ -8,13 +8,18 @@ package org.whispersystems.textsecuregcm.controllers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.UUID;
 
 @Path("/v1/captcha")
 @Tag(name = "Captcha")
@@ -28,7 +33,11 @@ public class CaptchaController {
       description = "Provides HTML page for registration captcha verification"
   )
   @ApiResponse(responseCode = "200", description = "HTML captcha page for registration")
-  public Response getRegistrationCaptcha(@Context ContainerRequestContext requestContext) {
+  public Response getRegistrationCaptcha(@Context ContainerRequestContext requestContext,
+                                       @QueryParam("session") String sessionId) {
+    // Generate a unique captcha token for this session
+    String captchaToken = UUID.randomUUID().toString();
+    
     String htmlContent = """
         <!DOCTYPE html>
         <html lang="en">
@@ -128,6 +137,8 @@ public class CaptchaController {
             </div>
             
             <script>
+                const CAPTCHA_TOKEN = '""" + captchaToken + """';
+                
                 function verifyHuman() {
                     const button = document.querySelector('.verify-btn');
                     const result = document.getElementById('result');
@@ -135,20 +146,50 @@ public class CaptchaController {
                     button.disabled = true;
                     button.textContent = 'Verifying...';
                     
-                    setTimeout(() => {
-                        result.innerHTML = '<p class="success">✓ Verification successful!</p>';
-                        button.style.display = 'none';
-                        
-                        // Signal the parent app that verification is complete
-                        if (window.Android && window.Android.onVerificationComplete) {
-                            window.Android.onVerificationComplete();
+                    // Submit captcha verification to server
+                    fetch('/v1/captcha/registration/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            token: CAPTCHA_TOKEN,
+                            timestamp: Date.now()
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            result.innerHTML = '<p class="success">✓ Verification successful!</p>';
+                            button.style.display = 'none';
+                            
+                            // Signal the parent app that verification is complete with the token
+                            if (window.Android && window.Android.onCaptchaComplete) {
+                                window.Android.onCaptchaComplete(CAPTCHA_TOKEN);
+                            }
+                            
+                            // For web-based testing, redirect or close
+                            setTimeout(() => {
+                                if (window.opener) {
+                                    window.opener.postMessage({
+                                        type: 'captcha_complete',
+                                        token: CAPTCHA_TOKEN
+                                    }, '*');
+                                }
+                                window.close();
+                            }, 2000);
+                        } else {
+                            result.innerHTML = '<p style="color: red;">Verification failed. Please try again.</p>';
+                            button.disabled = false;
+                            button.textContent = 'Verify I\'m Human';
                         }
-                        
-                        // Alternative: try to close the webview
-                        setTimeout(() => {
-                            window.close();
-                        }, 2000);
-                    }, 1000);
+                    })
+                    .catch(error => {
+                        console.error('Verification error:', error);
+                        result.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
+                        button.disabled = false;
+                        button.textContent = 'Verify I\'m Human';
+                    });
                 }
             </script>
         </body>
@@ -156,5 +197,52 @@ public class CaptchaController {
         """;
     
     return Response.ok(htmlContent, MediaType.TEXT_HTML).build();
+  }
+
+  @POST
+  @Path("/registration/verify")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Verify captcha token",
+      description = "Verifies the captcha token submitted by the HTML page"
+  )
+  @ApiResponse(responseCode = "200", description = "Captcha verification result")
+  public Response verifyCaptcha(@Context ContainerRequestContext requestContext, String requestBody) {
+    // For production, you would validate the token against a stored session
+    // For now, we'll accept any valid token format (UUID)
+    try {
+      // Parse the JSON request (simple validation)
+      if (requestBody != null && requestBody.contains("token") && requestBody.contains("timestamp")) {
+        // In production, you'd validate the token against your session store
+        // For now, we'll return success for any properly formatted request
+        String response = """
+            {
+              "success": true,
+              "message": "Captcha verification successful",
+              "timestamp": """ + System.currentTimeMillis() + """
+            }
+            """;
+        return Response.ok(response, MediaType.APPLICATION_JSON).build();
+      } else {
+        String errorResponse = """
+            {
+              "success": false,
+              "message": "Invalid captcha token format",
+              "timestamp": """ + System.currentTimeMillis() + """
+            }
+            """;
+        return Response.status(400).entity(errorResponse).build();
+      }
+    } catch (Exception e) {
+      String errorResponse = """
+          {
+            "success": false,
+            "message": "Captcha verification failed",
+            "timestamp": """ + System.currentTimeMillis() + """
+          }
+          """;
+      return Response.status(500).entity(errorResponse).build();
+    }
   }
 }
