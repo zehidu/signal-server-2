@@ -34,8 +34,10 @@ public class CaptchaController {
   @ApiResponse(responseCode = "200", description = "HTML captcha page for registration")
   public Response getRegistrationCaptcha(@Context ContainerRequestContext requestContext,
                                        @QueryParam("session") String sessionId) {
-    // Generate a unique captcha token for this session
-    String captchaToken = UUID.randomUUID().toString();
+    // Generate a Signal-compatible captcha token using the noop provider
+    // Format: provider.sitekey.action.token
+    String uniqueId = UUID.randomUUID().toString().replace("-", "");
+    String captchaToken = "noop.noop.registration." + uniqueId;
     
     StringBuilder htmlBuilder = new StringBuilder();
     htmlBuilder.append("<!DOCTYPE html>");
