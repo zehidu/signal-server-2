@@ -205,6 +205,52 @@ public class ChallengeController {
         .build();
   }
 
+  @GET
+  @Path("/captcha")
+  @Produces(MediaType.TEXT_HTML)
+  @Operation(
+      summary = "Get human verification HTML page",
+      description = "Provides HTML page for human verification captcha"
+  )
+  @ApiResponse(responseCode = "200", description = "HTML captcha page")
+  public Response getCaptchaPage(@Context ContainerRequestContext requestContext) {
+    String htmlContent = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Human Verification</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+                .container { text-align: center; border: 1px solid #ddd; padding: 30px; border-radius: 8px; }
+                .challenge { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 4px; }
+                button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+                button:hover { background: #005a87; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Human Verification Required</h2>
+                <p>Please complete this verification to continue.</p>
+                <div class="challenge">
+                    <p><strong>Challenge:</strong> Click the button below to verify you are human</p>
+                    <button onclick="verifyHuman()">I am Human</button>
+                </div>
+                <div id="result"></div>
+            </div>
+            <script>
+                function verifyHuman() {
+                    document.getElementById('result').innerHTML = '<p style="color: green;">✓ Verification successful!</p>';
+                }
+            </script>
+        </body>
+        </html>
+        """;
+    
+    return Response.ok(htmlContent, MediaType.TEXT_HTML).build();
+  }
+
   @POST
   @Path("/human")
   @Consumes(MediaType.APPLICATION_JSON)
