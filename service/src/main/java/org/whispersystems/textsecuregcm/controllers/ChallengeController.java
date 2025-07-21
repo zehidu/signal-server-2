@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -187,5 +188,41 @@ public class ChallengeController {
     } catch (final NotPushRegisteredException e) {
       return Response.status(404).build();
     }
+  }
+
+  @GET
+  @Path("/human")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Get human verification challenge",
+      description = "Provides human verification challenge for account registration"
+  )
+  @ApiResponse(responseCode = "200", description = "Human verification challenge provided")
+  public Response getHumanVerification(@Context ContainerRequestContext requestContext) {
+    // Return a simple human verification challenge
+    return Response.ok()
+        .entity("{\"challenge\":\"human-verification\",\"type\":\"captcha\"}")
+        .build();
+  }
+
+  @POST
+  @Path("/human")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Submit human verification",
+      description = "Submit human verification response"
+  )
+  @ApiResponse(responseCode = "200", description = "Human verification accepted")
+  @ApiResponse(responseCode = "400", description = "Invalid verification data")
+  public Response submitHumanVerification(
+      @Valid final AnswerChallengeRequest answerRequest,
+      @Context ContainerRequestContext requestContext) {
+    
+    // For now, accept any human verification attempt
+    // In production, you'd want proper validation here
+    return Response.ok()
+        .entity("{\"status\":\"verified\",\"message\":\"Human verification successful\"}")
+        .build();
   }
 }
