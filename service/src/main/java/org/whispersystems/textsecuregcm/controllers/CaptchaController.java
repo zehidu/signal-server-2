@@ -146,7 +146,7 @@ public class CaptchaController {
                     button.disabled = true;
                     button.textContent = 'Verifying...';
                     
-                    // Submit captcha verification to server
+                    // Submit captcha verification to server first
                     fetch('/v1/captcha/registration/verify', {
                         method: 'POST',
                         headers: {
@@ -163,21 +163,12 @@ public class CaptchaController {
                             result.innerHTML = '<p class="success">✓ Verification successful!</p>';
                             button.style.display = 'none';
                             
-                            // Signal the parent app that verification is complete with the token
-                            if (window.Android && window.Android.onCaptchaComplete) {
-                                window.Android.onCaptchaComplete(CAPTCHA_TOKEN);
-                            }
-                            
-                            // For web-based testing, redirect or close
+                            // Use Signal Android's URL scheme pattern
+                            // This is how Signal Android expects to receive the captcha token
                             setTimeout(() => {
-                                if (window.opener) {
-                                    window.opener.postMessage({
-                                        type: 'captcha_complete',
-                                        token: CAPTCHA_TOKEN
-                                    }, '*');
-                                }
-                                window.close();
-                            }, 2000);
+                                window.location.href = 'signalcaptcha://' + CAPTCHA_TOKEN;
+                            }, 1000);
+                            
                         } else {
                             result.innerHTML = '<p style="color: red;">Verification failed. Please try again.</p>';
                             button.disabled = false;
