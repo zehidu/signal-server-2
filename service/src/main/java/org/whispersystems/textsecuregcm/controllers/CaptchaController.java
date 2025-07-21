@@ -12,7 +12,6 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -38,156 +37,71 @@ public class CaptchaController {
     // Generate a unique captcha token for this session
     String captchaToken = UUID.randomUUID().toString();
     
-    String htmlContent = """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Signal Registration - Human Verification</title>
-            <style>
-                body { 
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                    max-width: 400px; 
-                    margin: 0 auto; 
-                    padding: 20px; 
-                    background: #f8f9fa;
-                    color: #333;
-                }
-                .container { 
-                    text-align: center; 
-                    background: white;
-                    border-radius: 12px; 
-                    padding: 30px; 
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                }
-                .logo {
-                    width: 60px;
-                    height: 60px;
-                    background: #2090ea;
-                    border-radius: 50%;
-                    margin: 0 auto 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 24px;
-                    font-weight: bold;
-                }
-                h2 { 
-                    color: #2090ea; 
-                    margin-bottom: 10px;
-                    font-size: 24px;
-                }
-                .subtitle {
-                    color: #666;
-                    margin-bottom: 30px;
-                    font-size: 16px;
-                }
-                .challenge { 
-                    background: #f8f9fa; 
-                    padding: 25px; 
-                    margin: 20px 0; 
-                    border-radius: 8px; 
-                    border: 1px solid #e9ecef;
-                }
-                .verify-btn { 
-                    background: #2090ea; 
-                    color: white; 
-                    padding: 12px 30px; 
-                    border: none; 
-                    border-radius: 25px; 
-                    cursor: pointer; 
-                    font-size: 16px;
-                    font-weight: 500;
-                    transition: background 0.2s;
-                    width: 100%;
-                    max-width: 200px;
-                }
-                .verify-btn:hover { 
-                    background: #1a7bc7; 
-                }
-                .success {
-                    color: #28a745;
-                    font-weight: 500;
-                    margin-top: 15px;
-                }
-                .instructions {
-                    color: #666;
-                    font-size: 14px;
-                    margin-bottom: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="logo">S</div>
-                <h2>Human Verification</h2>
-                <p class="subtitle">Complete verification to continue with Signal registration</p>
-                
-                <div class="challenge">
-                    <p class="instructions">To verify you're human, please click the button below:</p>
-                    <button class="verify-btn" onclick="verifyHuman()">Verify I'm Human</button>
-                    <div id="result"></div>
-                </div>
-                
-                <p style="font-size: 12px; color: #999; margin-top: 20px;">
-                    This verification helps protect Signal from automated abuse.
-                </p>
-            </div>
-            
-            <script>
-                const CAPTCHA_TOKEN = '""" + captchaToken + """';
-                
-                function verifyHuman() {
-                    const button = document.querySelector('.verify-btn');
-                    const result = document.getElementById('result');
-                    
-                    button.disabled = true;
-                    button.textContent = 'Verifying...';
-                    
-                    // Submit captcha verification to server first
-                    fetch('/v1/captcha/registration/verify', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            token: CAPTCHA_TOKEN,
-                            timestamp: Date.now()
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            result.innerHTML = '<p class="success">✓ Verification successful!</p>';
-                            button.style.display = 'none';
-                            
-                            // Use Signal Android's URL scheme pattern
-                            // This is how Signal Android expects to receive the captcha token
-                            setTimeout(() => {
-                                window.location.href = 'signalcaptcha://' + CAPTCHA_TOKEN;
-                            }, 1000);
-                            
-                        } else {
-                            result.innerHTML = '<p style="color: red;">Verification failed. Please try again.</p>';
-                            button.disabled = false;
-                            button.textContent = 'Verify I\'m Human';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Verification error:', error);
-                        result.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
-                        button.disabled = false;
-                        button.textContent = 'Verify I\'m Human';
-                    });
-                }
-            </script>
-        </body>
-        </html>
-        """;
+    StringBuilder htmlBuilder = new StringBuilder();
+    htmlBuilder.append("<!DOCTYPE html>");
+    htmlBuilder.append("<html lang=\"en\">");
+    htmlBuilder.append("<head>");
+    htmlBuilder.append("<meta charset=\"UTF-8\">");
+    htmlBuilder.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+    htmlBuilder.append("<title>Signal Registration - Human Verification</title>");
+    htmlBuilder.append("<style>");
+    htmlBuilder.append("body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; background: #f8f9fa; color: #333; }");
+    htmlBuilder.append(".container { text-align: center; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }");
+    htmlBuilder.append(".logo { width: 60px; height: 60px; background: #2090ea; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold; }");
+    htmlBuilder.append("h2 { color: #2090ea; margin-bottom: 10px; font-size: 24px; }");
+    htmlBuilder.append(".subtitle { color: #666; margin-bottom: 30px; font-size: 16px; }");
+    htmlBuilder.append(".challenge { background: #f8f9fa; padding: 25px; margin: 20px 0; border-radius: 8px; border: 1px solid #e9ecef; }");
+    htmlBuilder.append(".verify-btn { background: #2090ea; color: white; padding: 12px 30px; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500; transition: background 0.2s; width: 100%; max-width: 200px; }");
+    htmlBuilder.append(".verify-btn:hover { background: #1a7bc7; }");
+    htmlBuilder.append(".success { color: #28a745; font-weight: 500; margin-top: 15px; }");
+    htmlBuilder.append(".instructions { color: #666; font-size: 14px; margin-bottom: 20px; }");
+    htmlBuilder.append("</style>");
+    htmlBuilder.append("</head>");
+    htmlBuilder.append("<body>");
+    htmlBuilder.append("<div class=\"container\">");
+    htmlBuilder.append("<div class=\"logo\">S</div>");
+    htmlBuilder.append("<h2>Human Verification</h2>");
+    htmlBuilder.append("<p class=\"subtitle\">Complete verification to continue with Signal registration</p>");
+    htmlBuilder.append("<div class=\"challenge\">");
+    htmlBuilder.append("<p class=\"instructions\">To verify you're human, please click the button below:</p>");
+    htmlBuilder.append("<button class=\"verify-btn\" onclick=\"verifyHuman()\">Verify I'm Human</button>");
+    htmlBuilder.append("<div id=\"result\"></div>");
+    htmlBuilder.append("</div>");
+    htmlBuilder.append("<p style=\"font-size: 12px; color: #999; margin-top: 20px;\">This verification helps protect Signal from automated abuse.</p>");
+    htmlBuilder.append("</div>");
+    htmlBuilder.append("<script>");
+    htmlBuilder.append("const CAPTCHA_TOKEN = '").append(captchaToken).append("';");
+    htmlBuilder.append("function verifyHuman() {");
+    htmlBuilder.append("const button = document.querySelector('.verify-btn');");
+    htmlBuilder.append("const result = document.getElementById('result');");
+    htmlBuilder.append("button.disabled = true;");
+    htmlBuilder.append("button.textContent = 'Verifying...';");
+    htmlBuilder.append("fetch('/v1/captcha/registration/verify', {");
+    htmlBuilder.append("method: 'POST',");
+    htmlBuilder.append("headers: { 'Content-Type': 'application/json' },");
+    htmlBuilder.append("body: JSON.stringify({ token: CAPTCHA_TOKEN, timestamp: Date.now() })");
+    htmlBuilder.append("}).then(response => response.json()).then(data => {");
+    htmlBuilder.append("if (data.success) {");
+    htmlBuilder.append("result.innerHTML = '<p class=\"success\">✓ Verification successful!</p>';");
+    htmlBuilder.append("button.style.display = 'none';");
+    htmlBuilder.append("setTimeout(() => { window.location.href = 'signalcaptcha://' + CAPTCHA_TOKEN; }, 1000);");
+    htmlBuilder.append("} else {");
+    htmlBuilder.append("result.innerHTML = '<p style=\"color: red;\">Verification failed. Please try again.</p>';");
+    htmlBuilder.append("button.disabled = false;");
+    htmlBuilder.append("button.textContent = 'Verify I\\'m Human';");
+    htmlBuilder.append("}");
+    htmlBuilder.append("}).catch(error => {");
+    htmlBuilder.append("console.error('Verification error:', error);");
+    htmlBuilder.append("result.innerHTML = '<p style=\"color: red;\">Network error. Please try again.</p>';");
+    htmlBuilder.append("button.disabled = false;");
+    htmlBuilder.append("button.textContent = 'Verify I\\'m Human';");
+    htmlBuilder.append("});");
+    htmlBuilder.append("}");
+    htmlBuilder.append("</script>");
+    htmlBuilder.append("</body>");
+    htmlBuilder.append("</html>");
     
-    return Response.ok(htmlContent, MediaType.TEXT_HTML).build();
+    return Response.ok(htmlBuilder.toString(), MediaType.TEXT_HTML).build();
   }
 
   @POST
@@ -200,39 +114,28 @@ public class CaptchaController {
   )
   @ApiResponse(responseCode = "200", description = "Captcha verification result")
   public Response verifyCaptcha(@Context ContainerRequestContext requestContext, String requestBody) {
-    // For production, you would validate the token against a stored session
-    // For now, we'll accept any valid token format (UUID)
     try {
-      // Parse the JSON request (simple validation)
       if (requestBody != null && requestBody.contains("token") && requestBody.contains("timestamp")) {
-        // In production, you'd validate the token against your session store
-        // For now, we'll return success for any properly formatted request
-        String response = """
-            {
-              "success": true,
-              "message": "Captcha verification successful",
-              "timestamp": """ + System.currentTimeMillis() + """
-            }
-            """;
+        String response = "{" +
+            "\"success\": true," +
+            "\"message\": \"Captcha verification successful\"," +
+            "\"timestamp\": " + System.currentTimeMillis() +
+            "}";
         return Response.ok(response, MediaType.APPLICATION_JSON).build();
       } else {
-        String errorResponse = """
-            {
-              "success": false,
-              "message": "Invalid captcha token format",
-              "timestamp": """ + System.currentTimeMillis() + """
-            }
-            """;
+        String errorResponse = "{" +
+            "\"success\": false," +
+            "\"message\": \"Invalid captcha token format\"," +
+            "\"timestamp\": " + System.currentTimeMillis() +
+            "}";
         return Response.status(400).entity(errorResponse).build();
       }
     } catch (Exception e) {
-      String errorResponse = """
-          {
-            "success": false,
-            "message": "Captcha verification failed",
-            "timestamp": """ + System.currentTimeMillis() + """
-          }
-          """;
+      String errorResponse = "{" +
+          "\"success\": false," +
+          "\"message\": \"Captcha verification failed\"," +
+          "\"timestamp\": " + System.currentTimeMillis() +
+          "}";
       return Response.status(500).entity(errorResponse).build();
     }
   }
